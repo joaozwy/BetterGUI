@@ -14,10 +14,10 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.logging.Level;
-import me.hsgamer.bettergui.config.impl.MessageConfig;
+import me.hsgamer.bettergui.config.MessageConfig;
 import me.hsgamer.bettergui.object.ClickableItem;
-import me.hsgamer.bettergui.util.CommonUtils;
-import me.hsgamer.bettergui.util.WebUtils;
+import me.hsgamer.hscore.bukkit.utils.MessageUtils;
+import me.hsgamer.hscore.web.WebUtils;
 import org.bukkit.Material;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.event.inventory.ClickType;
@@ -25,14 +25,19 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+/**
+ * The info of the addon
+ */
 public class AddonInfo {
 
   private final String name;
   private final String version;
   private final List<String> authors = new ArrayList<>();
   private final String directLink;
+  private Status status;
   private String description = "";
   private String sourceLink = "";
+  private String wiki = "";
 
   private boolean isDownloading = false;
 
@@ -42,18 +47,66 @@ public class AddonInfo {
     this.directLink = directLink;
   }
 
+  /**
+   * Get the name
+   *
+   * @return the name
+   */
+  public String getName() {
+    return name;
+  }
+
+  /**
+   * Get the version
+   *
+   * @return the version
+   */
+  public String getVersion() {
+    return version;
+  }
+
+  /**
+   * Add authors
+   *
+   * @param author the author
+   */
   public void addAuthor(String author) {
     this.authors.add(author);
   }
 
+  /**
+   * Set the source code link
+   *
+   * @param sourceLink the source link
+   */
   public void setSourceLink(String sourceLink) {
     this.sourceLink = sourceLink;
   }
 
+  /**
+   * Set the description
+   *
+   * @param description the description
+   */
   public void setDescription(String description) {
     this.description = description;
   }
 
+  /**
+   * Set the wiki link
+   *
+   * @param wiki the wiki link
+   */
+  public void setWiki(String wiki) {
+    this.wiki = wiki;
+  }
+
+  /**
+   * Download the addon
+   *
+   * @throws IOException          when an I/O error occurred
+   * @throws DownloadingException if the addon is being downloaded
+   */
   public void download() throws IOException {
     if (isDownloading) {
       throw new DownloadingException();
@@ -72,40 +125,70 @@ public class AddonInfo {
     }
   }
 
+  /**
+   * Get the status
+   *
+   * @return the status
+   */
+  public Status getStatus() {
+    if (status == null) {
+      if (getInstance().getAddonManager().isAddonLoaded(name)) {
+        if (getInstance().getAddonManager().getAddon(name).getDescription().getVersion()
+            .equals(version)) {
+          status = Status.LATEST;
+        } else {
+          status = Status.OUTDATED;
+        }
+      } else {
+        status = Status.AVAILABLE;
+      }
+    }
+    return status;
+  }
+
+  /**
+   * Create the icon for the downloader menu
+   *
+   * @return the clickable item
+   */
   public ClickableItem getIcon() {
     XMaterial xMaterial;
     String displayName = "&f" + name + " &c- &4" + version;
-    List<String> lores = new ArrayList<>();
-    lores.add("&f" + description);
-    lores.add("&fAuthors: &e" + Arrays.toString(authors.toArray()));
-    lores.add("");
-    if (getInstance().getAddonManager().isAddonLoaded(name)) {
-      if (getInstance().getAddonManager().getAddon(name).getDescription().getVersion()
-          .equals(version)) {
+    List<String> lore = new ArrayList<>();
+    lore.add("&f" + description);
+    lore.add("&fAuthors: &e" + Arrays.toString(authors.toArray()));
+    lore.add("");
+    switch (getStatus()) {
+      case LATEST:
         xMaterial = XMaterial.GREEN_WOOL;
-        lores.add("&6Status: &aUP-TO-DATE");
-      } else {
+        lore.add("&6Status: &aLATEST");
+        break;
+      case OUTDATED:
         xMaterial = XMaterial.ORANGE_WOOL;
-        lores.add("&6Status: &eOUTDATED");
-      }
-    } else {
-      xMaterial = XMaterial.LIGHT_BLUE_WOOL;
-      lores.add("&6Status: &bAVAILABLE");
+        lore.add("&6Status: &eOUTDATED");
+        break;
+      default:
+        xMaterial = XMaterial.LIGHT_BLUE_WOOL;
+        lore.add("&6Status: &bAVAILABLE");
+        break;
     }
-    lores.add("");
-    lores.add("&bLeft click &fto download");
+    lore.add("");
+    lore.add("&bLeft click &fto download");
+    if (!wiki.isEmpty()) {
+      lore.add("&bMiddle click &fto see the wiki");
+    }
     if (!sourceLink.isEmpty()) {
-      lores.add("&bRight click &fto get the source code");
+      lore.add("&bRight click &fto get the source code");
     }
-    lores.replaceAll(CommonUtils::colorize);
+    lore.replaceAll(MessageUtils::colorize);
 
     ItemStack itemStack = xMaterial.parseItem();
     if (itemStack == null) {
       itemStack = new ItemStack(Material.STONE);
     }
     ItemMeta itemMeta = itemStack.getItemMeta();
-    itemMeta.setDisplayName(CommonUtils.colorize(displayName));
-    itemMeta.setLore(lores);
+    itemMeta.setDisplayName(MessageUtils.colorize(displayName));
+    itemMeta.setLore(lore);
     itemStack.setItemMeta(itemMeta);
 
     Consumer<InventoryClickEvent> consumer = inventoryClickEvent -> {
@@ -115,35 +198,43 @@ public class AddonInfo {
         if (getInstance().getAddonManager().isAddonLoaded(name)
             && getInstance().getAddonManager().getAddon(name)
             .getDescription().getVersion().equals(version)) {
-          CommonUtils.sendMessage(humanEntity, "&cIt's already up-to-date");
+          MessageUtils.sendMessage(humanEntity, "&cIt's already up-to-date");
           return;
         }
 
-        CommonUtils.sendMessage(humanEntity, "&eDownloading " + name);
+        MessageUtils.sendMessage(humanEntity, "&eDownloading " + name);
         CompletableFuture.supplyAsync(() -> {
           try {
             download();
             return true;
           } catch (DownloadingException e) {
-            CommonUtils.sendMessage(humanEntity, "&cIt's still downloading");
+            MessageUtils.sendMessage(humanEntity, "&cIt's still downloading");
           } catch (IOException e) {
             getInstance().getLogger()
                 .log(Level.WARNING, e, () -> "Unexpected issue when downloading " + name);
-            CommonUtils.sendMessage(humanEntity,
+            MessageUtils.sendMessage(humanEntity,
                 "&cAn unexpected issue occurs when downloading. Check the console");
           }
           return false;
         }).thenAccept(complete -> {
           if (complete.equals(Boolean.TRUE)) {
-            CommonUtils.sendMessage(humanEntity, MessageConfig.SUCCESS.getValue());
+            MessageUtils.sendMessage(humanEntity, MessageConfig.SUCCESS.getValue());
           }
         });
       } else if (clickType.isRightClick() && !sourceLink.isEmpty()) {
-        CommonUtils.sendMessage(humanEntity, "&bLink: &f" + sourceLink);
+        MessageUtils.sendMessage(humanEntity, "&bLink: &f" + sourceLink);
+      } else if (clickType.equals(ClickType.MIDDLE) && !wiki.isEmpty()) {
+        MessageUtils.sendMessage(humanEntity, "&bLink: &f" + wiki);
       }
     };
 
     return new ClickableItem(itemStack, consumer);
+  }
+
+  public enum Status {
+    AVAILABLE,
+    OUTDATED,
+    LATEST
   }
 
   public static class Info {
@@ -153,10 +244,10 @@ public class AddonInfo {
     public static final String AUTHORS = "authors";
     public static final String SOURCE_LINK = "source-code";
     public static final String DIRECT_LINK = "direct-link";
+    public static final String WIKI = "wiki";
 
     private Info() {
 
     }
   }
-
 }

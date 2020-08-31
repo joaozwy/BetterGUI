@@ -6,87 +6,88 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
-import me.hsgamer.bettergui.object.LocalVariableManager;
+import java.util.function.Supplier;
 import me.hsgamer.bettergui.object.Requirement;
-import me.hsgamer.bettergui.object.RequirementSet;
 import me.hsgamer.bettergui.object.requirement.ConditionRequirement;
 import me.hsgamer.bettergui.object.requirement.CooldownRequirement;
 import me.hsgamer.bettergui.object.requirement.ExpLevelRequirement;
 import me.hsgamer.bettergui.object.requirement.PermissionRequirement;
-import me.hsgamer.bettergui.util.CaseInsensitiveStringMap;
-import me.hsgamer.bettergui.util.CommonUtils;
+import me.hsgamer.bettergui.object.requirementset.RequirementSet;
+import me.hsgamer.bettergui.object.variable.LocalVariableManager;
+import me.hsgamer.hscore.common.CommonUtils;
+import me.hsgamer.hscore.map.CaseInsensitiveStringMap;
 import org.bukkit.configuration.ConfigurationSection;
 
+/**
+ * The Requirement Builder
+ */
 public final class RequirementBuilder {
 
-  private static final Map<String, Class<? extends Requirement<?, ?>>> requirementsClass = new CaseInsensitiveStringMap<>();
+  private static final String NOT_PREFIX = "not-";
+  private static final Map<String, Supplier<Requirement<?, ?>>> requirementTypes = new CaseInsensitiveStringMap<>();
 
   static {
-    register("condition", ConditionRequirement.class);
-    register("level", ExpLevelRequirement.class);
-    register("permission", PermissionRequirement.class);
-    register("cooldown", CooldownRequirement.class);
+    register(ConditionRequirement::new, "condition");
+    register(ExpLevelRequirement::new, "level");
+    register(PermissionRequirement::new, "permission");
+    register(CooldownRequirement::new, "cooldown");
   }
 
   private RequirementBuilder() {
-
+    // EMPTY
   }
 
   /**
    * Register new requirement type
    *
-   * @param type  the name of the type
-   * @param clazz the class
+   * @param requirementSupplier the requirement supplier
+   * @param type                the name of the type
    */
-  public static void register(String type, Class<? extends Requirement<?, ?>> clazz) {
-    if (type.toLowerCase().startsWith("not-")) {
-      getInstance().getLogger()
-          .warning(() -> "Invalid requirement type '" + type
-              + "': Should not start with 'not-'. Ignored...");
-      return;
+  public static void register(Supplier<Requirement<?, ?>> requirementSupplier, String... type) {
+    for (String s : type) {
+      if (s.toLowerCase().startsWith(NOT_PREFIX)) {
+        getInstance().getLogger()
+            .warning(() -> "Invalid requirement type '" + s
+                + "': Should not start with '" + NOT_PREFIX + "'. Ignored...");
+        return;
+      }
+      requirementTypes.put(s, requirementSupplier);
     }
-    requirementsClass.put(type, clazz);
   }
 
   /**
-   * Check the integrity of the classes
+   * Get the requirement
+   *
+   * @param type                 the type of the requirement
+   * @param localVariableManager the local variable manager that involves the command
+   * @return the requirement
    */
-  public static void checkClass() {
-    for (Class<? extends Requirement<?, ?>> clazz : requirementsClass.values()) {
-      try {
-        clazz.getDeclaredConstructor().newInstance();
-      } catch (Exception ex) {
-        getInstance().getLogger()
-            .log(Level.WARNING, ex, () -> "There is an unknown error on " + clazz.getSimpleName()
-                + ". The requirement will be ignored");
-      }
-    }
-  }
-
   public static Optional<Requirement<?, ?>> getRequirement(String type,
       LocalVariableManager<?> localVariableManager) {
     // Check Inverted mode
     boolean inverted = false;
-    if (type.toLowerCase().startsWith("not-")) {
-      type = type.substring(4);
+    if (type.toLowerCase().startsWith(NOT_PREFIX)) {
+      type = type.substring(NOT_PREFIX.length());
       inverted = true;
     }
 
-    if (requirementsClass.containsKey(type)) {
-      Class<? extends Requirement<?, ?>> clazz = requirementsClass.get(type);
-      try {
-        Requirement<?, ?> requirement = clazz.getDeclaredConstructor().newInstance();
-        requirement.setVariableManager(localVariableManager);
-        requirement.setInverted(inverted);
-        return Optional.of(requirement);
-      } catch (Exception e) {
-        // IGNORED
-      }
+    if (!requirementTypes.containsKey(type)) {
+      return Optional.empty();
     }
-    return Optional.empty();
+
+    Requirement<?, ?> requirement = requirementTypes.get(type).get();
+    requirement.setVariableManager(localVariableManager);
+    requirement.setInverted(inverted);
+    return Optional.of(requirement);
   }
 
+  /**
+   * Load requirements from the section
+   *
+   * @param section              the section
+   * @param localVariableManager the local variable manager that involves the command
+   * @return the list of the requirements
+   */
   public static List<Requirement<?, ?>> loadRequirementsFromSection(ConfigurationSection section,
       LocalVariableManager<?> localVariableManager) {
     List<Requirement<?, ?>> requirements = new ArrayList<>();
@@ -117,6 +118,13 @@ public final class RequirementBuilder {
     return requirements;
   }
 
+  /**
+   * Get the requirement set
+   *
+   * @param section              the section
+   * @param localVariableManager the local variable manager that involves the command
+   * @return the list of the requirement sets
+   */
   public static List<RequirementSet> getRequirementSet(ConfigurationSection section,
       LocalVariableManager<?> localVariableManager) {
     List<RequirementSet> list = new ArrayList<>();

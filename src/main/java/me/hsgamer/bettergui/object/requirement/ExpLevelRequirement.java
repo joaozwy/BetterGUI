@@ -3,12 +3,12 @@ package me.hsgamer.bettergui.object.requirement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import me.hsgamer.bettergui.config.impl.MessageConfig;
-import me.hsgamer.bettergui.object.LocalVariable;
-import me.hsgamer.bettergui.object.LocalVariableManager;
+import me.hsgamer.bettergui.config.MessageConfig;
 import me.hsgamer.bettergui.object.Requirement;
-import me.hsgamer.bettergui.util.CommonUtils;
-import me.hsgamer.bettergui.util.ExpressionUtils;
+import me.hsgamer.bettergui.object.variable.LocalVariable;
+import me.hsgamer.bettergui.object.variable.LocalVariableManager;
+import me.hsgamer.hscore.bukkit.utils.MessageUtils;
+import me.hsgamer.hscore.expression.ExpressionUtils;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
@@ -26,7 +26,7 @@ public class ExpLevelRequirement extends Requirement<Object, Integer> implements
     if (ExpressionUtils.isValidExpression(parsed)) {
       return ExpressionUtils.getResult(parsed).intValue();
     } else {
-      CommonUtils
+      MessageUtils
           .sendMessage(player, MessageConfig.INVALID_NUMBER.getValue().replace("{input}", parsed));
       return 0;
     }

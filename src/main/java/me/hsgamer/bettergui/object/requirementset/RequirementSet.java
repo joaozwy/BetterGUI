@@ -1,11 +1,16 @@
-package me.hsgamer.bettergui.object;
+package me.hsgamer.bettergui.object.requirementset;
 
 import co.aikar.taskchain.TaskChain;
 import java.util.ArrayList;
 import java.util.List;
 import me.hsgamer.bettergui.BetterGUI;
+import me.hsgamer.bettergui.object.Command;
+import me.hsgamer.bettergui.object.Requirement;
 import org.bukkit.entity.Player;
 
+/**
+ * The Requirement Set
+ */
 public class RequirementSet {
 
   private final String name;
@@ -18,18 +23,39 @@ public class RequirementSet {
     this.requirements = requirements;
   }
 
+  /**
+   * Get the requirements
+   *
+   * @return the requirements
+   */
   public List<Requirement<?, ?>> getRequirements() {
     return requirements;
   }
 
+  /**
+   * Set the success commands
+   *
+   * @param commands the commands
+   */
   public void setSuccessCommands(List<Command> commands) {
     this.successCommands.addAll(commands);
   }
 
+  /**
+   * Set the fail commands
+   *
+   * @param commands the commands
+   */
   public void setFailCommands(List<Command> commands) {
     this.failCommands.addAll(commands);
   }
 
+  /**
+   * Check if the player meets all requirements
+   *
+   * @param player the player
+   * @return true if the player does
+   */
   public boolean check(Player player) {
     for (Requirement<?, ?> requirement : requirements) {
       if (!requirement.check(player)) {
@@ -42,6 +68,11 @@ public class RequirementSet {
     return true;
   }
 
+  /**
+   * Run the "take" action of the requirement
+   *
+   * @param player the player to "take"
+   */
   public void take(Player player) {
     for (Requirement<?, ?> requirement : requirements) {
       if (requirement.canTake()) {
@@ -50,12 +81,22 @@ public class RequirementSet {
     }
   }
 
+  /**
+   * Run success commands
+   *
+   * @param player the player
+   */
   public void sendSuccessCommands(Player player) {
     TaskChain<?> taskChain = BetterGUI.newChain();
     successCommands.forEach(command -> command.addToTaskChain(player, taskChain));
     taskChain.execute();
   }
 
+  /**
+   * Get the name of the set
+   *
+   * @return the name
+   */
   public String getName() {
     return name;
   }

@@ -2,8 +2,12 @@ package me.hsgamer.bettergui.object;
 
 import co.aikar.taskchain.TaskChain;
 import me.hsgamer.bettergui.manager.VariableManager;
+import me.hsgamer.bettergui.object.variable.LocalVariableManager;
 import org.bukkit.entity.Player;
 
+/**
+ * Command for Menu/Icon/...
+ */
 public abstract class Command {
 
   protected final boolean hasVariables;

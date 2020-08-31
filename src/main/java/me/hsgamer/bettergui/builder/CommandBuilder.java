@@ -5,74 +5,76 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.logging.Level;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import me.hsgamer.bettergui.BetterGUI;
 import me.hsgamer.bettergui.object.Command;
-import me.hsgamer.bettergui.object.LocalVariableManager;
 import me.hsgamer.bettergui.object.command.BackCommand;
 import me.hsgamer.bettergui.object.command.BroadcastCommand;
 import me.hsgamer.bettergui.object.command.CloseMenuCommand;
 import me.hsgamer.bettergui.object.command.ConditionCommand;
 import me.hsgamer.bettergui.object.command.ConsoleCommand;
 import me.hsgamer.bettergui.object.command.DelayCommand;
+import me.hsgamer.bettergui.object.command.MusicCommand;
 import me.hsgamer.bettergui.object.command.OpCommand;
 import me.hsgamer.bettergui.object.command.OpenMenuCommand;
 import me.hsgamer.bettergui.object.command.PermissionCommand;
 import me.hsgamer.bettergui.object.command.PlayerCommand;
+import me.hsgamer.bettergui.object.command.RawSoundCommand;
+import me.hsgamer.bettergui.object.command.SoundCommand;
 import me.hsgamer.bettergui.object.command.TellCommand;
 import me.hsgamer.bettergui.object.command.UpdateMenuCommand;
+import me.hsgamer.bettergui.object.variable.LocalVariableManager;
 
+/**
+ * The Command/Action Builder
+ */
 public final class CommandBuilder {
 
-  private static final Map<Pattern, Class<? extends Command>> commands = new HashMap<>();
+  private static final Map<Pattern, Function<String, Command>> commands = new HashMap<>();
 
   static {
-    register("console:", ConsoleCommand.class);
-    register("op:", OpCommand.class);
-    register("player:", PlayerCommand.class);
-    register("delay:", DelayCommand.class);
-    register("condition:", ConditionCommand.class);
-    register("(open|menu|open-?menu):", OpenMenuCommand.class);
-    register("back-?menu", BackCommand.class);
-    register("tell:", TellCommand.class);
-    register("broadcast:", BroadcastCommand.class);
-    register("close-?menu", CloseMenuCommand.class);
-    register("update-?menu", UpdateMenuCommand.class);
-    register("permission:", PermissionCommand.class);
+    register(ConsoleCommand::new, "console:");
+    register(OpCommand::new, "op:");
+    register(PlayerCommand::new, "player:");
+    register(DelayCommand::new, "delay:");
+    register(ConditionCommand::new, "condition:");
+    register(OpenMenuCommand::new, "(open|menu|open-?menu):");
+    register(BackCommand::new, "back-?menu");
+    register(TellCommand::new, "tell:");
+    register(BroadcastCommand::new, "broadcast:");
+    register(CloseMenuCommand::new, "close-?menu");
+    register(UpdateMenuCommand::new, "update-?menu");
+    register(PermissionCommand::new, "permission:");
+    register(SoundCommand::new, "sound:");
+    register(RawSoundCommand::new, "raw-sound:");
+    register(MusicCommand::new, "music:");
   }
 
   private CommandBuilder() {
-
+    // EMPTY
   }
 
   /**
    * Register new command type
    *
-   * @param regex the regex that detects the prefix of the string
-   * @param clazz the class
+   * @param commandFunction the "create command" function
+   * @param regex           the regex that detects the prefix of the string
    */
-  public static void register(String regex, Class<? extends Command> clazz) {
-    Pattern pattern = Pattern.compile("^(?i)" + regex, Pattern.CASE_INSENSITIVE);
-    commands.put(pattern, clazz);
-  }
-
-  /**
-   * Check the integrity of the classes
-   */
-  public static void checkClass() {
-    for (Class<? extends Command> clazz : commands.values()) {
-      try {
-        clazz.getDeclaredConstructor(String.class).newInstance("");
-      } catch (Exception ex) {
-        BetterGUI.getInstance().getLogger()
-            .log(Level.WARNING, ex, () -> "There is an unknown error on " + clazz.getSimpleName()
-                + ". The command will be ignored");
-      }
+  public static void register(Function<String, Command> commandFunction, String... regex) {
+    for (String s : regex) {
+      Pattern pattern = Pattern.compile("^(?i)" + s, Pattern.CASE_INSENSITIVE);
+      commands.put(pattern, commandFunction);
     }
   }
 
+  /**
+   * Get the list of Command Objects
+   *
+   * @param localVariableManager the local variable manager that involves the command
+   * @param input                the list of command string
+   * @return the list of Command Objects
+   */
   public static List<Command> getCommands(LocalVariableManager<?> localVariableManager,
       List<String> input) {
     input.replaceAll(String::trim);
@@ -91,19 +93,12 @@ public final class CommandBuilder {
    * @return Command Object
    */
   public static Command getCommand(LocalVariableManager<?> localVariableManager, String input) {
-    for (Entry<Pattern, Class<? extends Command>> entry : commands.entrySet()) {
+    for (Entry<Pattern, Function<String, Command>> entry : commands.entrySet()) {
       Matcher matcher = entry.getKey().matcher(input);
       if (matcher.find()) {
-        String cleanCommand = matcher.replaceFirst("").trim();
-
-        try {
-          Command command = entry.getValue().getDeclaredConstructor(String.class)
-              .newInstance(cleanCommand);
-          command.setVariableManager(localVariableManager);
-          return command;
-        } catch (Exception e) {
-          // Checked at startup
-        }
+        Command command = entry.getValue().apply(matcher.replaceFirst("").trim());
+        command.setVariableManager(localVariableManager);
+        return command;
       }
     }
 

@@ -11,15 +11,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import me.hsgamer.bettergui.builder.IconBuilder;
 import me.hsgamer.bettergui.builder.PropertyBuilder;
-import me.hsgamer.bettergui.config.impl.MessageConfig;
+import me.hsgamer.bettergui.config.MessageConfig;
 import me.hsgamer.bettergui.object.Menu;
 import me.hsgamer.bettergui.object.icon.DummyIcon;
 import me.hsgamer.bettergui.object.property.menu.MenuInventoryType;
 import me.hsgamer.bettergui.object.property.menu.MenuRows;
 import me.hsgamer.bettergui.object.property.menu.MenuTitle;
 import me.hsgamer.bettergui.object.property.menu.MenuVariable;
-import me.hsgamer.bettergui.util.CaseInsensitiveStringMap;
-import me.hsgamer.bettergui.util.CommonUtils;
+import me.hsgamer.hscore.bukkit.utils.MessageUtils;
+import me.hsgamer.hscore.map.CaseInsensitiveStringMap;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -70,7 +70,8 @@ public class DummyMenu extends Menu<FastInv> {
         }
       } else if (!icons.containsKey(key)) {
         icons.put(key,
-            IconBuilder.getIcon(this, file.getConfigurationSection(key), DummyIcon.class));
+            (DummyIcon) IconBuilder
+                .getIcon(this, file.getConfigurationSection(key), DummyIcon::new));
       } else {
         getInstance().getLogger().log(Level.WARNING, "Duplicated icon {0}", key);
       }
@@ -89,7 +90,7 @@ public class DummyMenu extends Menu<FastInv> {
       inventoryMap.put(player.getUniqueId(), inventory);
       return true;
     } else {
-      CommonUtils.sendMessage(player, MessageConfig.NO_PERMISSION.getValue());
+      MessageUtils.sendMessage(player, MessageConfig.NO_PERMISSION.getValue());
       return false;
     }
   }
@@ -143,12 +144,10 @@ public class DummyMenu extends Menu<FastInv> {
     return Optional.ofNullable(inventoryMap.get(player.getUniqueId()));
   }
 
-  @SuppressWarnings("unused")
   public Map<String, DummyIcon> getIcons() {
     return icons;
   }
 
-  @SuppressWarnings("unused")
   public void setPermission(Permission permission) {
     this.permission = permission;
   }

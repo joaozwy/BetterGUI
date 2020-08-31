@@ -7,12 +7,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import me.hsgamer.bettergui.BetterGUI;
-import me.hsgamer.bettergui.config.impl.MainConfig;
+import me.hsgamer.bettergui.config.MainConfig;
 import me.hsgamer.bettergui.object.Icon;
 import me.hsgamer.bettergui.object.Menu;
 import me.hsgamer.bettergui.object.icon.AnimatedIcon;
@@ -20,51 +19,48 @@ import me.hsgamer.bettergui.object.icon.DummyIcon;
 import me.hsgamer.bettergui.object.icon.ListIcon;
 import me.hsgamer.bettergui.object.icon.RawIcon;
 import me.hsgamer.bettergui.object.icon.SimpleIcon;
-import me.hsgamer.bettergui.util.CaseInsensitiveStringMap;
-import me.hsgamer.bettergui.util.Validate;
+import me.hsgamer.hscore.common.Validate;
+import me.hsgamer.hscore.map.CaseInsensitiveStringMap;
 import org.bukkit.configuration.ConfigurationSection;
 
+/**
+ * The Icon Builder
+ */
 public final class IconBuilder {
 
-  private static final Map<String, Class<? extends Icon>> iconTypes = new CaseInsensitiveStringMap<>();
+  private static final Map<String, BiFunction<String, Menu<?>, Icon>> iconTypes = new CaseInsensitiveStringMap<>();
 
   static {
-    register("dummy", DummyIcon.class);
-    register("simple", SimpleIcon.class);
-    register("animated", AnimatedIcon.class);
-    register("list", ListIcon.class);
-    register("raw", RawIcon.class);
+    register(DummyIcon::new, "dummy");
+    register(SimpleIcon::new, "simple");
+    register(AnimatedIcon::new, "animated");
+    register(ListIcon::new, "list");
+    register(RawIcon::new, "raw");
   }
 
   private IconBuilder() {
-
+    // EMPTY
   }
 
   /**
    * Register new Icon type
    *
-   * @param type  name of the type
-   * @param clazz the class
+   * @param iconBiFunction the "create icon" function
+   * @param type           the name of the type
    */
-  public static void register(String type, Class<? extends Icon> clazz) {
-    iconTypes.put(type, clazz);
-  }
-
-  /**
-   * Check the integrity of the classes
-   */
-  public static void checkClass() {
-    for (Class<? extends Icon> clazz : iconTypes.values()) {
-      try {
-        clazz.getDeclaredConstructor(String.class, Menu.class).newInstance("", null);
-      } catch (Exception ex) {
-        BetterGUI.getInstance().getLogger()
-            .log(Level.WARNING, ex, () -> "There is an unknown error on " + clazz.getSimpleName()
-                + ". The icon will be ignored");
-      }
+  public static void register(BiFunction<String, Menu<?>, Icon> iconBiFunction, String... type) {
+    for (String s : type) {
+      iconTypes.put(s, iconBiFunction);
     }
   }
 
+  /**
+   * Get the icon
+   *
+   * @param menu    the menu the icon is in
+   * @param section the icon section
+   * @return the icon
+   */
   public static Icon getIcon(Menu<?> menu, ConfigurationSection section) {
     Map<String, Object> keys = new CaseInsensitiveStringMap<>(section.getValues(false));
     if (keys.containsKey("type")) {
@@ -74,24 +70,30 @@ public final class IconBuilder {
       }
     }
     return getIcon(menu, section, iconTypes
-        .getOrDefault(MainConfig.DEFAULT_ICON_TYPE.getValue(), SimpleIcon.class));
+        .getOrDefault(MainConfig.DEFAULT_ICON_TYPE.getValue(), SimpleIcon::new));
   }
 
-  public static <T extends Icon> T getIcon(Menu<?> menu, ConfigurationSection section,
-      Class<T> tClass) {
-    try {
-      T icon = tClass.getDeclaredConstructor(String.class, Menu.class)
-          .newInstance(section.getName(), menu);
-      icon.setFromSection(section);
-      return icon;
-    } catch (Exception ex) {
-      BetterGUI.getInstance().getLogger().log(Level.WARNING, ex, () ->
-          "Something wrong when creating the icon '" + section.getName() + "' in the menu '" + menu
-              .getName() + "'");
-    }
-    return null;
+  /**
+   * Get the icon
+   *
+   * @param menu           the menu the icon is in
+   * @param section        the icon section
+   * @param iconBiFunction the "create icon" function
+   * @return the icon
+   */
+  public static Icon getIcon(Menu<?> menu, ConfigurationSection section,
+      BiFunction<String, Menu<?>, Icon> iconBiFunction) {
+    Icon icon = iconBiFunction.apply(section.getName(), menu);
+    icon.setFromSection(section);
+    return icon;
   }
 
+  /**
+   * Get the slots for the icon
+   *
+   * @param section the icon section
+   * @return the slots
+   */
   public static List<Integer> getSlots(ConfigurationSection section) {
     List<Integer> slots = new ArrayList<>();
     Map<String, Object> map = new CaseInsensitiveStringMap<>(section.getValues(false));
@@ -116,6 +118,12 @@ public final class IconBuilder {
     return slots;
   }
 
+  /**
+   * Create a new stream of slots
+   *
+   * @param input the input string
+   * @return the stream of slots
+   */
   public static Stream<Integer> generateSlots(String input) {
     if (Validate.isValidInteger(input)) {
       return Stream.of(Integer.parseInt(input));

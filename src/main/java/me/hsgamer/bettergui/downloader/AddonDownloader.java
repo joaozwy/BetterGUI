@@ -3,14 +3,15 @@ package me.hsgamer.bettergui.downloader;
 import fr.mrmicky.fastinv.FastInv;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import me.hsgamer.bettergui.BetterGUI;
 import me.hsgamer.bettergui.downloader.AddonInfo.Info;
 import me.hsgamer.bettergui.object.ClickableItem;
-import me.hsgamer.bettergui.util.CommonUtils;
-import me.hsgamer.bettergui.util.WebUtils;
+import me.hsgamer.hscore.bukkit.utils.MessageUtils;
+import me.hsgamer.hscore.web.WebUtils;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
@@ -18,6 +19,9 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
 
+/**
+ * The addon downloader
+ */
 @SuppressWarnings("unchecked")
 public class AddonDownloader {
 
@@ -26,23 +30,53 @@ public class AddonDownloader {
   private final BetterGUI instance;
   private AddonMenu addonMenu;
 
+  /**
+   * Create an instance
+   *
+   * @param instance the plugin
+   */
   public AddonDownloader(BetterGUI instance) {
     addAddonInfos();
     this.instance = instance;
   }
 
+  /**
+   * Get the list of addon info
+   *
+   * @return the list of addon info
+   */
+  public List<AddonInfo> getAddonInfoList() {
+    return Collections.unmodifiableList(addonInfoList);
+  }
+
+  /**
+   * Generate the menu
+   */
   public void createMenu() {
     addonMenu = new AddonMenu();
   }
 
+  /**
+   * Cancel the check task
+   */
   public void cancelTask() {
     addonMenu.cancelTask();
   }
 
+  /**
+   * Open the downloader menu
+   *
+   * @param player the player
+   */
   public void openMenu(Player player) {
-    addonMenu.open(player);
+    if (addonMenu != null) {
+      addonMenu.open(player);
+    }
   }
 
+  /**
+   * Generate addon infos
+   */
   private void addAddonInfos() {
     CompletableFuture.supplyAsync(() -> {
       try {
@@ -53,11 +87,11 @@ public class AddonDownloader {
         return null;
       }
     }).thenAccept(jsonObject -> {
-      if (jsonObject == null) {
+      if (!(jsonObject instanceof JSONObject)) {
         return;
       }
 
-      jsonObject.forEach((key, raw) -> {
+      ((JSONObject) jsonObject).forEach((key, raw) -> {
         JSONObject value = (JSONObject) raw;
 
         String name = String.valueOf(key);
@@ -79,6 +113,10 @@ public class AddonDownloader {
           addonInfo.setSourceLink(String.valueOf(value.get(Info.SOURCE_LINK)));
         }
 
+        if (value.containsKey(Info.WIKI)) {
+          addonInfo.setWiki(String.valueOf(value.get(Info.WIKI)));
+        }
+
         addonInfoList.add(addonInfo);
       });
     });
@@ -89,7 +127,7 @@ public class AddonDownloader {
     private final BukkitTask updateTask;
 
     public AddonMenu() {
-      super(54, CommonUtils.colorize("&4&lAddon Downloader"));
+      super(54, MessageUtils.colorize("&4&lAddon Downloader"));
       generateItems();
       updateTask = new BukkitRunnable() {
         @Override

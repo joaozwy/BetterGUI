@@ -10,11 +10,14 @@ import java.util.logging.Level;
 import me.hsgamer.bettergui.BetterGUI;
 import me.hsgamer.bettergui.Permissions;
 import me.hsgamer.bettergui.builder.MenuBuilder;
-import me.hsgamer.bettergui.config.PluginConfig;
 import me.hsgamer.bettergui.object.Menu;
+import me.hsgamer.hscore.bukkit.config.PluginConfig;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
+/**
+ * The Menu Manager
+ */
 public final class MenuManager {
 
   private final Map<String, Menu<?>> menuMap = new HashMap<>();
@@ -40,6 +43,11 @@ public final class MenuManager {
     return list;
   }
 
+  /**
+   * Register the menu
+   *
+   * @param file the menu file
+   */
   public void registerMenu(PluginConfig file) {
     String name = file.getFileName();
     FileConfiguration config = file.getConfig();
@@ -51,6 +59,9 @@ public final class MenuManager {
     }
   }
 
+  /**
+   * Clear all menus
+   */
   public void clear() {
     menuMap.values().forEach(Menu::closeAll);
     menuMap.clear();
@@ -110,6 +121,7 @@ public final class MenuManager {
    * Get the menu
    *
    * @param name the menu name
+   * @return the menu
    */
   public Menu<?> getMenu(String name) {
     return menuMap.get(name);

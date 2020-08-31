@@ -6,10 +6,17 @@ import java.util.Optional;
 import java.util.UUID;
 import me.hsgamer.bettergui.manager.MenuManager;
 import me.hsgamer.bettergui.manager.VariableManager;
+import me.hsgamer.bettergui.object.variable.LocalVariable;
+import me.hsgamer.bettergui.object.variable.LocalVariableManager;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
+/**
+ * The menu
+ *
+ * @param <T> the inventory
+ */
 public abstract class Menu<T> implements LocalVariableManager<Menu<?>> {
 
   private final String name;
@@ -66,7 +73,6 @@ public abstract class Menu<T> implements LocalVariableManager<Menu<?>> {
    * @param player the player
    * @return the player's inventory
    */
-  @SuppressWarnings("unused")
   public abstract Optional<T> getInventory(Player player);
 
   /**
